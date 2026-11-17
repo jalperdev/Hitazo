@@ -194,14 +194,42 @@ async function pickDevice() {
   return found.id;
 }
 
+async function currentTrackId() {
+  try { return (await api('/me/player/currently-playing?market=from_token'))?.item?.id || null; }
+  catch { return null; }
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Espera hasta ~3 s a que Spotify deje de sonar la canción anterior
+async function changedFrom(prevId) {
+  for (let i = 0; i < 6; i++) {
+    await sleep(500);
+    const now = await currentTrackId();
+    if (now && now !== prevId) return true;
+  }
+  return false;
+}
+
 export async function play(trackId, positionMs = 0) {
   if (window.__hzPlayer?.activateElement) { try { await window.__hzPlayer.activateElement(); } catch {} }
-  const id = await pickDevice();
-  await api('/me/player/play?device_id=' + encodeURIComponent(id), {
-    method: 'PUT', body: { uris: ['spotify:track:' + trackId], position_ms: positionMs },
+  const dev = encodeURIComponent(await pickDevice());
+  const uri = 'spotify:track:' + trackId;
+  const prevId = await currentTrackId();
+  // Versiones anteriores dejaban el modo "repetir canción" activado, y eso hace que Spotify se quede en la anterior
+  await api('/me/player/repeat?state=off&device_id=' + dev, { method: 'PUT' }).catch(() => {});
+  const start = () => api('/me/player/play?device_id=' + dev, {
+    method: 'PUT', body: { uris: [uri], offset: { position: 0 }, position_ms: positionMs },
   });
-  // Evita que al acabar la canción salte otra que muestre el título en pantalla
-  api('/me/player/repeat?state=track&device_id=' + encodeURIComponent(id), { method: 'PUT' }).catch(() => {});
+  await start();
+  if (!prevId || prevId === trackId) return; // nada sonando antes, o es "desde el principio"
+  if (await changedFrom(prevId)) return;
+  // Spotify ha reanudado la canción anterior: lo intentamos otra vez
+  await start();
+  if (await changedFrom(prevId)) return;
+  // Último recurso: ponerla en la cola y saltar a ella
+  await api('/me/player/queue?uri=' + encodeURIComponent(uri) + '&device_id=' + dev, { method: 'POST' });
+  await sleep(400);
+  await api('/me/player/next?device_id=' + dev, { method: 'POST' });
 }
 export const pause = () => api('/me/player/pause', { method: 'PUT' }).catch(e => { if (e.kind !== 'nodevice') throw e; });
 export const resume = () => api('/me/player/play', { method: 'PUT' });
