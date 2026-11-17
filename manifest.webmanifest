@@ -1,0 +1,17 @@
+{
+  "name": "Hitazo",
+  "short_name": "Hitazo",
+  "description": "Adivina la canción y ordénala en el tiempo. Juego musical para un solo móvil.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070C38",
+  "theme_color": "#070C38",
+  "lang": "es",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
