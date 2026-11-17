@@ -2511,6 +2511,297 @@ Karol G|CAIRO|2022
 Karol G|AMARGURA|2023
 `;
 
+const TEEN = `
+New Kids On The Block|You Got It (The Right Stuff)|1988
+New Kids On The Block|Hangin' Tough|1988
+New Kids On The Block|Step by Step|1990
+Menudo|Súbete a mi moto|1981
+Locomía|Locomía|1989
+Take That|Pray|1993
+Take That|Relight My Fire|1993
+Take That|Back for Good|1995
+Take That|Patience|2006
+Take That|Shine|2007
+Take That|Rule the World|2007
+Boyzone|Love Me for a Reason|1994
+Boyzone|Words|1996
+Boyzone|No Matter What|1998
+Backstreet Boys|I'll Never Break Your Heart|1995
+Backstreet Boys|Quit Playing Games (With My Heart)|1996
+Backstreet Boys|Everybody (Backstreet's Back)|1997
+Backstreet Boys|As Long as You Love Me|1997
+Backstreet Boys|I Want It That Way|1999
+Backstreet Boys|Larger than Life|1999
+Backstreet Boys|Show Me the Meaning of Being Lonely|1999
+Backstreet Boys|The One|1999
+Backstreet Boys|Shape of My Heart|2000
+Backstreet Boys|Incomplete|2005
+*NSYNC|I Want You Back|1996
+*NSYNC|Tearin' Up My Heart|1997
+*NSYNC|Bye Bye Bye|2000
+*NSYNC|It's Gonna Be Me|2000
+*NSYNC|Pop|2001
+*NSYNC|Girlfriend|2001
+Hanson|MMMBop|1997
+Five|Everybody Get Up|1998
+Five|Keep On Movin'|1999
+Westlife|Swear It Again|1999
+Westlife|Flying Without Wings|1999
+Westlife|World of Our Own|2001
+Westlife|Uptown Girl|2001
+Westlife|You Raise Me Up|2005
+Blue|All Rise|2001
+Blue|One Love|2002
+Busted|What I Go to School For|2002
+Busted|Year 3000|2003
+McFly|Obviously|2004
+McFly|Five Colours in Her Hair|2004
+McFly|All About You|2005
+Jonas Brothers|S.O.S|2007
+Jonas Brothers|When You Look Me in the Eyes|2007
+Jonas Brothers|Burnin' Up|2008
+Jonas Brothers|Lovebug|2008
+Jonas Brothers|Play My Music|2008
+Jonas Brothers|Sucker|2019
+Jonas Brothers|Only Human|2019
+Big Time Rush|Boyfriend|2010
+The Wanted|All Time Low|2010
+The Wanted|Glad You Came|2011
+One Direction|What Makes You Beautiful|2011
+One Direction|One Thing|2011
+One Direction|Live While We're Young|2012
+One Direction|Little Things|2012
+One Direction|Kiss You|2012
+One Direction|Best Song Ever|2013
+One Direction|Story of My Life|2013
+One Direction|Steal My Girl|2014
+One Direction|Night Changes|2014
+One Direction|Drag Me Down|2015
+One Direction|Perfect|2015
+5 Seconds of Summer|She Looks So Perfect|2014
+5 Seconds of Summer|Amnesia|2014
+5 Seconds of Summer|Youngblood|2018
+Dvicio|Paraíso|2014
+CNCO|Reggaetón Lento (Bailemos)|2016
+CNCO|Hey DJ|2017
+BTS|DNA|2017
+BTS|Boy With Luv|2019
+BTS|Dynamite|2020
+BTS|Butter|2021
+BTS|Permission to Dance|2021
+Jung Kook|Seven|2023
+BLACKPINK|DDU-DU DDU-DU|2018
+BLACKPINK|Kill This Love|2019
+BLACKPINK|How You Like That|2020
+BLACKPINK|Pink Venom|2022
+NewJeans|OMG|2023
+NewJeans|Super Shy|2023
+ROSÉ|APT.|2024
+HUNTR/X|Golden|2025
+Saja Boys|Soda Pop|2025
+KATSEYE|Gabriela|2025
+Spice Girls|Wannabe|1996
+Spice Girls|Say You'll Be There|1996
+Spice Girls|2 Become 1|1996
+Spice Girls|Spice Up Your Life|1997
+Spice Girls|Stop|1997
+Spice Girls|Too Much|1997
+Spice Girls|Viva Forever|1997
+All Saints|Never Ever|1997
+All Saints|Pure Shores|2000
+Steps|5,6,7,8|1997
+Steps|Tragedy|1998
+B*Witched|C'est la vie|1998
+S Club 7|Reach|2000
+S Club 7|Don't Stop Movin'|2001
+Atomic Kitten|Whole Again|2001
+Atomic Kitten|The Tide Is High (Get the Feeling)|2002
+Sugababes|Push the Button|2005
+Sugababes|About You Now|2007
+Girls Aloud|Something Kinda Ooooh|2006
+Girls Aloud|The Promise|2008
+TLC|No Scrubs|1999
+Destiny's Child|Say My Name|1999
+Destiny's Child|Survivor|2001
+Destiny's Child|Bootylicious|2001
+The Cheetah Girls|Cheetah Sisters|2003
+The Cheetah Girls|The Party's Just Begun|2006
+The Pussycat Dolls|Don't Cha|2005
+The Pussycat Dolls|Buttons|2006
+Little Mix|Wings|2012
+Little Mix|Black Magic|2015
+Little Mix|Shout Out to My Ex|2016
+Little Mix|Touch|2016
+Fifth Harmony|Worth It|2015
+Fifth Harmony|Work from Home|2016
+RBD|Rebelde|2004
+RBD|Sólo Quédate En Silencio|2004
+RBD|Sálvame|2004
+RBD|Nuestro Amor|2005
+RBD|Tras De Mí|2005
+Britney Spears|...Baby One More Time|1998
+Britney Spears|(You Drive Me) Crazy|1999
+Britney Spears|Sometimes|1999
+Britney Spears|Oops!...I Did It Again|2000
+Britney Spears|Lucky|2000
+Britney Spears|Stronger|2000
+Britney Spears|Toxic|2003
+Christina Aguilera|Genie in a Bottle|1999
+Christina Aguilera|What a Girl Wants|1999
+Christina Aguilera|Come On Over Baby (All I Want Is You)|2000
+Mandy Moore|Candy|1999
+Aaron Carter|I Want Candy|2000
+Aaron Carter|Aaron's Party (Come Get It)|2000
+Hilary Duff|Why Not|2002
+Hilary Duff|So Yesterday|2003
+Hilary Duff|Come Clean|2003
+Hilary Duff|What Dreams Are Made Of|2003
+Hilary Duff|Wake Up|2005
+Avril Lavigne|Complicated|2002
+Avril Lavigne|Sk8er Boi|2002
+Avril Lavigne|I'm with You|2002
+Avril Lavigne|Girlfriend|2007
+Simple Plan|Perfect|2002
+Simple Plan|Welcome to My Life|2004
+Good Charlotte|The Anthem|2002
+Kelly Clarkson|Miss Independent|2003
+Kelly Clarkson|Since U Been Gone|2004
+Ashlee Simpson|Pieces of Me|2004
+Jesse McCartney|Beautiful Soul|2004
+Jesse McCartney|Leavin'|2008
+The Click Five|Just the Girl|2005
+Plain White T's|Hey There Delilah|2006
+Paramore|Misery Business|2007
+Aly & AJ|Potential Breakup Song|2007
+Vanessa Hudgens|Say OK|2006
+Ashley Tisdale|He Said She Said|2007
+Owl City|Fireflies|2009
+Kesha|TiK ToK|2009
+Justin Bieber|One Time|2009
+Justin Bieber|Baby|2010
+Justin Bieber|Never Say Never|2010
+Justin Bieber|Boyfriend|2012
+Justin Bieber|Beauty And A Beat|2012
+Justin Bieber|What Do You Mean?|2015
+Justin Bieber|Sorry|2015
+Justin Bieber|Love Yourself|2015
+Katy Perry|Teenage Dream|2010
+Katy Perry|Last Friday Night (T.G.I.F.)|2010
+Katy Perry|Firework|2010
+Katy Perry|Roar|2013
+Carly Rae Jepsen|Call Me Maybe|2011
+Taylor Swift|Love Story|2008
+Taylor Swift|You Belong With Me|2008
+Taylor Swift|22|2012
+Taylor Swift|Shake It Off|2014
+Ariana Grande|The Way|2013
+Ariana Grande|Problem|2014
+Ariana Grande|Break Free|2014
+Ariana Grande|thank u, next|2018
+Meghan Trainor|All About That Bass|2014
+Shawn Mendes|Stitches|2015
+Shawn Mendes|Treat You Better|2016
+Aitana|Teléfono|2018
+Lola Indigo|Ya no quiero ná|2018
+Conan Gray|Heather|2020
+Olivia Rodrigo|All I Want|2019
+Olivia Rodrigo|drivers license|2021
+Olivia Rodrigo|deja vu|2021
+Olivia Rodrigo|good 4 u|2021
+Olivia Rodrigo|vampire|2023
+Tate McRae|greedy|2023
+Sabrina Carpenter|Espresso|2024
+Miley Cyrus|The Best of Both Worlds|2006
+Miley Cyrus|Nobody's Perfect|2007
+Miley Cyrus|See You Again|2007
+Miley Cyrus|7 Things|2008
+Miley Cyrus|The Climb|2009
+Miley Cyrus|Party In The U.S.A.|2009
+Miley Cyrus|Hoedown Throwdown|2009
+Miley Cyrus|He Could Be The One|2009
+Miley Cyrus|We Can't Stop|2013
+Miley Cyrus|Wrecking Ball|2013
+Miley Cyrus|Flowers|2023
+Selena Gomez & The Scene|Naturally|2009
+Selena Gomez & The Scene|Who Says|2011
+Selena Gomez & The Scene|Love You Like a Love Song|2011
+Selena Gomez|Come & Get It|2013
+Selena Gomez|Good for You|2015
+Selena Gomez|Lose You To Love Me|2019
+Demi Lovato|This Is Me|2008
+Demi Lovato|La La Land|2008
+Demi Lovato|Here We Go Again|2009
+Demi Lovato|Skyscraper|2011
+Demi Lovato|Heart Attack|2013
+Demi Lovato|Let It Go|2013
+Demi Lovato|Cool for the Summer|2015
+Demi Lovato|Sorry Not Sorry|2017
+Cast of Camp Rock|We Rock|2008
+Zac Efron|Start of Something New|2006
+Zac Efron|Get'cha Head in the Game|2006
+Zac Efron|Breaking Free|2006
+High School Musical Cast|We're All in This Together|2006
+Ashley Tisdale|Bop to the Top|2006
+High School Musical Cast|What Time Is It|2007
+Zac Efron|Bet On It|2007
+High School Musical Cast|High School Musical|2008
+Zendaya|Replay|2013
+Dove Cameron|Rotten to the Core|2015
+Dove Cameron|Ways to Be Wicked|2017
+Dove Cameron|Boyfriend|2022
+Martina Stoessel|En Mi Mundo|2012
+Ilene Woods|A Dream Is a Wish Your Heart Makes|1950
+Verna Felton|Bibbidi-Bobbidi-Boo|1950
+Mary Costa|Once Upon a Dream|1959
+Julie Andrews|A Spoonful of Sugar|1964
+Julie Andrews|Supercalifragilisticexpialidocious|1964
+Dick Van Dyke|Chim Chim Cher-ee|1964
+Phil Harris|The Bare Necessities|1967
+Louis Prima|I Wan'na Be Like You|1967
+Jodi Benson|Part of Your World|1989
+Samuel E. Wright|Under the Sea|1989
+Paige O'Hara|Belle|1991
+Jerry Orbach|Be Our Guest|1991
+Celine Dion|Beauty and the Beast|1991
+Robin Williams|Friend Like Me|1992
+Brad Kane|A Whole New World|1992
+Elton John|Circle of Life|1994
+Elton John|Can You Feel the Love Tonight|1994
+Nathan Lane|Hakuna Matata|1994
+Jeremy Irons|Be Prepared|1994
+Judy Kuhn|Colors of the Wind|1995
+Randy Newman|You've Got a Friend in Me|1995
+Lillias White|Zero to Hero|1997
+Roger Bart|Go the Distance|1997
+Lea Salonga|Reflection|1998
+Christina Aguilera|Reflection|1998
+Donny Osmond|I'll Make a Man Out of You|1998
+Phil Collins|You'll Be in My Heart|1999
+Phil Collins|Two Worlds|1999
+Anika Noni Rose|Almost There|2009
+Mandy Moore|When Will My Life Begin|2010
+Mandy Moore|I See the Light|2010
+Owl City|When Can I See You Again?|2012
+Idina Menzel|Let It Go|2013
+Kristen Bell|Do You Want to Build a Snowman?|2013
+Kristen Bell|For the First Time in Forever|2013
+Josh Gad|In Summer|2013
+Lana Del Rey|Once Upon a Dream|2014
+Shakira|Try Everything|2016
+Auli'i Cravalho|How Far I'll Go|2016
+Dwayne Johnson|You're Welcome|2016
+Anthony Gonzalez|Un Poco Loco|2017
+Miguel|Remember Me (Dúo)|2017
+Idina Menzel|Into the Unknown|2019
+Kristen Bell|The Next Right Thing|2019
+Jonathan Groff|Lost in the Woods|2019
+Carolina Gaitán - La Gaita|We Don't Talk About Bruno|2021
+Jessica Darrow|Surface Pressure|2021
+Sebastián Yatra|Dos Oruguitas|2021
+Ariana DeBose|This Wish|2023
+Auli'i Cravalho|Beyond|2024
+`;
+
 function parse(block, tag) {
   return block.trim().split('\n').map(l => {
     const [artist, title, year] = l.split('|');
@@ -2523,6 +2814,7 @@ export const PLAYLISTS = {
   los40: { name: 'Los 40 Principales', songs: parse(LOS40, 'los40') },
   verano: { name: 'Hits del verano', songs: parse(VERANO, 'verano') },
   reggaeton: { name: 'Reguetón', songs: parse(REGGAETON, 'reggaeton') },
+  teen: { name: 'Teen time', songs: parse(TEEN, 'teen') },
 };
 
 export const songKey = s => (s.artist + '|' + s.title).toLowerCase();

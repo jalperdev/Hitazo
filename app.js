@@ -38,6 +38,7 @@ const STYLES = [
   { id: 'los40', name: 'Los 40 Principales', hint: 'Números uno de la radio' },
   { id: 'verano', name: 'Hits del verano', hint: 'Chiringuito y canción del verano' },
   { id: 'reggaeton', name: 'Reguetón', hint: 'Del perreo clásico a hoy' },
+  { id: 'teen', name: 'Teen time', hint: 'Boy bands, Disney y pop adolescente' },
   { id: 'epoca', name: 'Selecciona época', hint: 'Cada jugador elige sus años' },
 ];
 

@@ -29,11 +29,12 @@ Hitazo es una versión casera del juego **Hitster**, hecha como web instalable (
 ## Pantalla de inicio
 Título, jugadores (de 1 a 10, con nombres), **estilo**, forma de jugar, dónde suena la música y cartas para ganar.
 
-Hay cinco estilos:
+Hay seis estilos:
 - Todos los tiempos
 - Los 40 Principales
 - Hits del verano
 - Reguetón
+- Teen time: boy bands, girl groups, pop adolescente, Disney Channel y canciones de películas Disney (`teen` en `data.js`)
 - **Selecciona época**: cada jugador elige un año de inicio y otro de fin. El mazo se forma con todas las canciones de todas las listas, sin duplicados, y va alternando las épocas de los jugadores (`buildDeck`).
 
 Hay dos formas de jugar:
@@ -104,12 +105,12 @@ El usuario sube los archivos desde el móvil sin carpetas, así que **no crees s
 - Base de datos oficial: `https://hitster.jumboplay.com/hitster-assets/gameset_database.json`, con la estructura `gamesets[].sku` y `gamesets[].gameset_data.cards[{CardNumber, Spotify}]`. Puede que la web bloquee la descarga directa; para ese caso existe «Importar archivo» en Ajustes. **No incluyas esa base de datos en el repositorio.**
 
 ## Listas de canciones (`data.js`)
-- Tamaño actual: Todos los tiempos 1.595, Los 40 Principales 314, Hits del verano 334 y Reguetón 254. Son 1.980 canciones distintas.
+- Tamaño actual: Todos los tiempos 1.595, Los 40 Principales 314, Hits del verano 334, Reguetón 254 y Teen time 288. Son 2.193 canciones distintas.
 - El año es el de la **primera publicación** de la canción, como single o en un álbum, la que fuera antes.
 - Reglas al añadir canciones:
   - Nada de duplicados dentro de una lista (por `artista|título`).
   - Una canción que esté en varias listas lleva **el mismo año** en todas.
-  - Años entre 1950 y el actual.
+  - Años entre 1950 y el actual (por eso Teen time no incluye las canciones Disney anteriores a 1950).
   - El título y el artista, escritos como aparecen en Spotify o iTunes, para que la búsqueda los encuentre.
 - Si una canción no se encuentra, la app la salta sola y la añade a `game.skipped`.
 
