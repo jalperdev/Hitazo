@@ -120,6 +120,21 @@ function score(item, song) {
   return s;
 }
 
+// Datos de cada canción encontrada (álbum y nombre) para poder reproducirla y comprobar que suena
+const INFO_KEY = 'hz.trackinfo';
+function readInfo() { try { return JSON.parse(localStorage.getItem(INFO_KEY)) || {}; } catch { return {}; } }
+function saveInfo(id, data) { const all = readInfo(); all[id] = data; localStorage.setItem(INFO_KEY, JSON.stringify(all)); }
+
+// ---------- Registro para diagnosticar problemas ----------
+const LOG_KEY = 'hz.log';
+export function dbg(msg) {
+  let l; try { l = JSON.parse(localStorage.getItem(LOG_KEY)) || []; } catch { l = []; }
+  l.push(new Date().toLocaleTimeString('es-ES') + '  ' + msg);
+  localStorage.setItem(LOG_KEY, JSON.stringify(l.slice(-60)));
+}
+export const readLog = () => { try { return JSON.parse(localStorage.getItem(LOG_KEY)) || []; } catch { return []; } };
+export const clearLog = () => localStorage.removeItem(LOG_KEY);
+
 export async function resolveTrack(song) {
   const key = (song.artist + '|' + song.title).toLowerCase();
   const cache = readCache();
@@ -138,13 +153,26 @@ export async function resolveTrack(song) {
     if (best) break;
   }
   const id = best ? best.id : null;
+  if (best) saveInfo(id, { album: best.album?.uri || (best.album?.id ? 'spotify:album:' + best.album.id : null), name: best.name });
   cache[key] = id || 'none';
   localStorage.setItem(LS.tracks, JSON.stringify(cache));
   return id;
 }
 
+async function trackInfo(id) {
+  const known = readInfo()[id];
+  if (known?.album) return known;
+  try {
+    const t = await api('/tracks/' + id + '?market=from_token');
+    const data = { album: t.album?.uri || (t.album?.id ? 'spotify:album:' + t.album.id : null), name: t.name };
+    saveInfo(id, data);
+    return data;
+  } catch { return known || {}; }
+}
+
 export async function getTrack(id) {
   const t = await api('/tracks/' + id + '?market=from_token');
+  saveInfo(id, { album: t.album?.uri || (t.album?.id ? 'spotify:album:' + t.album.id : null), name: t.name });
   return {
     artist: t.artists.map(a => a.name).join(', '),
     title: t.name,
@@ -184,6 +212,7 @@ export const setPreferredDevice = id => localStorage.setItem(LS.device, id);
 
 async function pickDevice() {
   const list = await devices();
+  dbg('Dispositivos: ' + (list.map(d => `${d.name} (${d.type}${d.is_active ? ', activo' : ''})`).join(' | ') || 'ninguno'));
   const pref = localStorage.getItem(LS.device);
   const found = list.find(d => d.id === pref)
     || (sdkDeviceId && list.find(d => d.id === sdkDeviceId))
@@ -191,45 +220,63 @@ async function pickDevice() {
     || list.find(d => d.type === 'Smartphone')
     || list[0];
   if (!found) throw new SpotifyError('nodevice', 'No hay ningún dispositivo de Spotify activo.');
+  dbg('Uso: ' + found.name);
   return found.id;
 }
 
-async function currentTrackId() {
-  try { return (await api('/me/player/currently-playing?market=from_token'))?.item?.id || null; }
-  catch { return null; }
+async function nowPlaying() {
+  try {
+    const r = await api('/me/player/currently-playing?market=from_token');
+    return r?.item ? { id: r.item.id, name: r.item.name, playing: r.is_playing } : null;
+  } catch { return null; }
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// Espera hasta ~3 s a que Spotify deje de sonar la canción anterior
-async function changedFrom(prevId) {
+// Espera hasta ~3 s a que suene la canción pedida. Devuelve true, false o 'unknown' si Spotify no informa.
+async function confirmPlaying(trackId, name) {
+  let seen = false, last = null;
   for (let i = 0; i < 6; i++) {
     await sleep(500);
-    const now = await currentTrackId();
-    if (now && now !== prevId) return true;
+    const now = await nowPlaying();
+    if (!now) continue;
+    seen = true; last = now;
+    if (now.id === trackId || (name && norm(now.name) === norm(name))) return true;
   }
-  return false;
+  dbg(seen ? `Sigue sonando «${last.name}»` : 'Spotify no dice qué está sonando');
+  return seen ? false : 'unknown';
 }
 
 export async function play(trackId, positionMs = 0) {
   if (window.__hzPlayer?.activateElement) { try { await window.__hzPlayer.activateElement(); } catch {} }
   const dev = encodeURIComponent(await pickDevice());
   const uri = 'spotify:track:' + trackId;
-  const prevId = await currentTrackId();
-  // Versiones anteriores dejaban el modo "repetir canción" activado, y eso hace que Spotify se quede en la anterior
+  const info = await trackInfo(trackId);
+  dbg(`Pedir «${info.name || trackId}»`);
   await api('/me/player/repeat?state=off&device_id=' + dev, { method: 'PUT' }).catch(() => {});
-  const start = () => api('/me/player/play?device_id=' + dev, {
-    method: 'PUT', body: { uris: [uri], offset: { position: 0 }, position_ms: positionMs },
-  });
-  await start();
-  if (!prevId || prevId === trackId) return; // nada sonando antes, o es "desde el principio"
-  if (await changedFrom(prevId)) return;
-  // Spotify ha reanudado la canción anterior: lo intentamos otra vez
-  await start();
-  if (await changedFrom(prevId)) return;
-  // Último recurso: ponerla en la cola y saltar a ella
-  await api('/me/player/queue?uri=' + encodeURIComponent(uri) + '&device_id=' + dev, { method: 'POST' });
-  await sleep(400);
-  await api('/me/player/next?device_id=' + dev, { method: 'POST' });
+
+  const methods = [];
+  // 1) El álbum empezando en la canción: es lo que mejor obedece la app de Spotify del móvil
+  if (info.album) methods.push(['álbum', () => api('/me/player/play?device_id=' + dev, {
+    method: 'PUT', body: { context_uri: info.album, offset: { uri }, position_ms: positionMs },
+  })]);
+  // 2) La canción suelta
+  methods.push(['canción', () => api('/me/player/play?device_id=' + dev, {
+    method: 'PUT', body: { uris: [uri], position_ms: positionMs },
+  })]);
+  // 3) A la cola y saltar
+  methods.push(['cola', async () => {
+    await api('/me/player/queue?uri=' + encodeURIComponent(uri) + '&device_id=' + dev, { method: 'POST' });
+    await sleep(400);
+    await api('/me/player/next?device_id=' + dev, { method: 'POST' });
+  }]);
+
+  for (const [label, run] of methods) {
+    try { await run(); } catch (e) { dbg(`Método ${label}: error ${e.message}`); if (e.kind === 'nodevice' || e.kind === 'login') throw e; continue; }
+    const ok = await confirmPlaying(trackId, info.name);
+    dbg(`Método ${label}: ${ok === true ? 'OK' : ok === 'unknown' ? 'sin confirmar' : 'no ha cambiado'}`);
+    if (ok) return;
+  }
+  throw new SpotifyError('stuck', 'Spotify no ha cambiado de canción. Abre la app de Spotify, pásala a cualquier otra canción y vuelve a darle al play.');
 }
 export const pause = () => api('/me/player/pause', { method: 'PUT' }).catch(e => { if (e.kind !== 'nodevice') throw e; });
 export const resume = () => api('/me/player/play', { method: 'PUT' });

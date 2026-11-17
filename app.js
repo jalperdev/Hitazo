@@ -177,6 +177,13 @@ function handleSpotifyError(e, retry) {
       <button class="btn primary" id="m-login">Conectar Spotify</button>
       <button class="btn ghost" data-close>Ahora no</button>
     </div>`, { onMount: el => $('#m-login', el).onclick = () => S.login().catch(err => toast(err.message)) });
+  if (e.kind === 'stuck') return modal(`
+    <h2>La canción no ha cambiado</h2>
+    <p>${esc(e.message)}</p>
+    <div class="sheet-actions">
+      <a class="btn secondary" href="spotify:">Abrir Spotify</a>
+      <button class="btn primary" id="m-retry">Reintentar</button>
+    </div>`, { onMount: (el, close) => { $('#m-retry', el).onclick = () => { close(); retry(); }; } });
   toast(e.message || 'Algo ha fallado con Spotify.');
 }
 
@@ -353,6 +360,16 @@ function renderSettings() {
     </div>
 
     <div class="panel">
+      <h2>Registro de Spotify</h2>
+      <p class="small">Lo que ha pasado en las últimas reproducciones. Si algo falla, cópialo y pásamelo.</p>
+      <pre class="log" id="log">${esc(S.readLog().slice(-25).join('\n')) || 'Vacío'}</pre>
+      <div class="sheet-actions">
+        <button class="btn ghost" id="copy-log">Copiar registro</button>
+        <button class="btn ghost" id="clear-log">Borrar</button>
+      </div>
+    </div>
+
+    <div class="panel">
       <h2>Datos</h2>
       <div class="sheet-actions">
         <button class="btn ghost" id="clear-cache">Olvidar canciones encontradas</button>
@@ -377,6 +394,8 @@ function renderSettings() {
     catch (err) { toast(err.message); }
   };
   $('#sku')?.addEventListener('change', e => Q.setDefaultSku(e.target.value));
+  $('#copy-log').onclick = () => navigator.clipboard?.writeText(S.readLog().join('\n')).then(() => toast('Registro copiado'));
+  $('#clear-log').onclick = () => { S.clearLog(); renderSettings(); };
   $('#clear-cache').onclick = () => { localStorage.removeItem('hz.tracks'); toast('Hecho'); };
   $('#end-game')?.addEventListener('click', () => { game = null; localStorage.removeItem('hz.game'); toast('Partida terminada'); renderSettings(); });
 }
@@ -492,7 +511,7 @@ function renderTurn() {
       <h2>${r.kept ? '¡Carta conseguida!' : 'Esta carta no vale'}</h2>
       <p>${r.kept ? `${esc(p.name)} ya tiene ${p.cards.length} de ${game.target} cartas.`
         : !r.any ? 'No ha acertado ni el artista ni el título.' : 'El año no estaba en su sitio.'}
-      ${r.any ? `<br><b class="plus">${ICON.token} +1 ficha</b> por acertar ${r.both ? 'artista y título' : pd.artistOk ? 'el artista' : 'el título'}.` : ''}</p>
+      ${r.kept ? `<br><b class="plus">${ICON.token} +1 ficha</b> para pasar una canción cuando quieras.` : ''}</p>
     </div>`;
   }
 
@@ -628,9 +647,9 @@ function confirmTurn() {
   const p = cur(), pd = game.pending;
   const any = pd.artistOk || pd.titleOk;
   const both = pd.artistOk && pd.titleOk;
-  if (any) p.tokens++;
   const kept = pd.correct && any;
   if (kept) {
+    p.tokens++;
     const { fromQr, ...card } = pd.song;
     p.cards.splice(pd.insertIndex, 0, card);
     if (p.cards.length >= game.target) game.winner = game.current;
