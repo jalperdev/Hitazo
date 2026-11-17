@@ -1,5 +1,6 @@
 import * as S from './spotify.js';
 import * as Q from './qr.js';
+import * as P from './preview.js';
 import { PLAYLISTS, allSongs, songKey } from './data.js';
 
 // ================= Utilidades =================
@@ -42,6 +43,7 @@ const STYLES = [
 
 // ================= Estado =================
 let setup = load('hz.setup', { count: 2, names: [], style: 'todos', mode: 'app', target: 10, eras: [] });
+if (!setup.audio) setup.audio = 'sdk';
 let game = load('hz.game', null);
 let screen = 'home';
 let profileName = load('hz.profile', null);
@@ -128,27 +130,69 @@ function placementOk(cards, idx, year) {
   return (!before || before.year <= year) && (!after || year <= after.year);
 }
 
-// ================= Spotify: reproducir =================
+// ================= Sonido =================
+// 'sdk' = Spotify dentro de Hitazo · 'preview' = fragmento de 30 s dentro de Hitazo · 'spotify' = app de Spotify
+const AUDIO_MODES = [
+  { id: 'sdk', name: 'En Hitazo', hint: 'Canción completa con tu Spotify Premium, sonando dentro de Hitazo. Si tu móvil no lo permite, Hitazo pasa sola a los fragmentos.' },
+  { id: 'preview', name: 'Fragmentos', hint: 'Un fragmento de 30 s que se repite, sonando dentro de Hitazo. No hace falta Spotify.' },
+  { id: 'spotify', name: 'App Spotify', hint: 'Suena en la app de Spotify. Su notificación puede mostrar el título.' },
+];
+const usesSpotify = () => setup.audio !== 'preview' || setup.mode === 'qr';
+
+// Se llama al tocar el botón, antes de esperar a nada: los móviles solo dejan sonar audio tras un toque
+function unlockAudio() {
+  P.unlock();
+  if (setup.audio === 'sdk') S.unlockSdk();
+}
+
+async function startAudio(p) {
+  if (setup.audio === 'preview') {
+    if (!p.previewUrl) p.previewUrl = await P.findPreview(p.song);
+    if (!p.previewUrl) { const e = new Error('no preview'); e.kind = 'notfound'; throw e; }
+    await P.play(p.previewUrl);
+  } else {
+    if (!p.trackId) p.trackId = await S.resolveTrack(p.song);
+    if (!p.trackId) { const e = new Error('no track'); e.kind = 'notfound'; throw e; }
+    await S.play(p.trackId, 0, setup.audio);
+  }
+}
+const aPause = () => Promise.resolve(setup.audio === 'preview' ? P.pause() : S.pause(setup.audio)).catch(() => {});
+const aResume = () => setup.audio === 'preview' ? P.resume() : S.resume(setup.audio);
+const aRestart = p => setup.audio === 'preview' ? P.restart() : S.play(p.trackId, 0, setup.audio);
+
+// Si el reproductor de Spotify no funciona en este móvil, seguimos con fragmentos
+function fallbackToPreview(e, retry) {
+  if (e.kind !== 'nosdk' || setup.audio !== 'sdk') return false;
+  S.dbg('Cambio a fragmentos: ' + e.message);
+  setup.audio = 'preview'; saveSetup();
+  toast('Spotify no puede sonar dentro de Hitazo en este móvil. Uso fragmentos de 30 s.');
+  retry();
+  return true;
+}
+
 async function playSongForTurn() {
+  unlockAudio();
   const p = game.pending;
   const btn = $('#play-btn');
   if (btn) { btn.disabled = true; btn.classList.add('loading'); }
   try {
-    for (let attempt = 0; attempt < 6; attempt++) {
-      if (!p.song) p.song = drawSong();
+    let ok = false;
+    for (let attempt = 0; attempt < 8 && !ok; attempt++) {
+      if (!p.song) { p.song = drawSong(); p.trackId = null; p.previewUrl = null; }
       if (!p.song) { toast('No quedan canciones.'); return; }
-      p.trackId = await S.resolveTrack(p.song);
-      if (p.trackId) break;
-      toast(`«${p.song.title}» no está en Spotify. Pongo otra.`);
-      game.skipped.push(songKey(p.song));
-      p.song = null;
+      try { await startAudio(p); ok = true; }
+      catch (e) {
+        if (e.kind !== 'notfound') throw e;
+        toast(`No encuentro «${p.song.title}». Pongo otra.`);
+        game.skipped.push(songKey(p.song));
+        p.song = null;
+      }
     }
-    if (!p.trackId) { toast('No encuentro canciones en Spotify. Revisa la conexión.'); return; }
-    await S.play(p.trackId);
+    if (!ok) { toast('No encuentro canciones. Revisa la conexión.'); return; }
     p.phase = 'listening'; p.playing = true;
     saveGame(); renderTurn();
   } catch (e) {
-    handleSpotifyError(e, playSongForTurn);
+    if (!fallbackToPreview(e, playSongForTurn)) handleSpotifyError(e, playSongForTurn);
   } finally {
     const b = $('#play-btn'); if (b) { b.disabled = false; b.classList.remove('loading'); }
   }
@@ -159,12 +203,13 @@ async function playScanned(trackId) {
   try {
     const meta = await S.getTrack(trackId);
     p.song = { artist: meta.artist, title: meta.title, year: meta.year || 2000, fromQr: true };
-    p.trackId = trackId;
-    await S.play(trackId);
+    p.trackId = trackId; p.previewUrl = null;
+    await startAudio(p);
     p.phase = 'listening'; p.playing = true;
     saveGame(); renderTurn();
   } catch (e) {
-    handleSpotifyError(e, () => playScanned(trackId));
+    if (e.kind === 'notfound') { toast('No encuentro el fragmento de esta canción. Prueba con otra carta.'); return; }
+    if (!fallbackToPreview(e, () => playScanned(trackId))) handleSpotifyError(e, () => playScanned(trackId));
   }
 }
 
@@ -257,6 +302,11 @@ function renderHome() {
       <p class="small">${setup.mode === 'qr'
         ? 'Escanea el QR de las cartas originales (o de cualquier canción de Spotify). El estilo elegido solo se usa para la carta inicial.'
         : 'La app elige las canciones del estilo que hayáis escogido.'}</p>
+      <h3 class="sub">¿Dónde suena la música?</h3>
+      <div class="segmented three">
+        ${AUDIO_MODES.map(m => `<button data-audio="${m.id}" class="${setup.audio === m.id ? 'on' : ''}">${m.name}</button>`).join('')}
+      </div>
+      <p class="small">${AUDIO_MODES.find(m => m.id === setup.audio).hint}</p>
       <div class="row-between">
         <h3>Cartas para ganar</h3>
         <div class="stepper" role="group" aria-label="Cartas para ganar">
@@ -269,7 +319,7 @@ function renderHome() {
 
     <div class="spotify-row ${logged ? 'ok' : ''}">
       ${ICON.spotify}
-      <span>${logged ? `Spotify conectado${profileName ? ' · ' + esc(profileName) : ''}` : 'Spotify sin conectar'}</span>
+      <span>${logged ? `Spotify conectado${profileName ? ' · ' + esc(profileName) : ''}` : usesSpotify() ? 'Spotify sin conectar' : 'Spotify sin conectar (no hace falta con fragmentos)'}</span>
       ${logged ? '' : `<button class="btn mini" id="sp-login">Conectar</button>`}
     </div>
 
@@ -281,11 +331,16 @@ function renderHome() {
   app.querySelectorAll('[data-target]').forEach(b => b.onclick = () => { setup.target = Math.min(30, Math.max(3, setup.target + +b.dataset.target)); saveSetup(); renderHome(); });
   app.querySelectorAll('[data-style]').forEach(b => b.onclick = () => { setup.style = b.dataset.style; saveSetup(); renderHome(); });
   app.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { setup.mode = b.dataset.mode; saveSetup(); renderHome(); });
+  app.querySelectorAll('[data-audio]').forEach(b => b.onclick = () => {
+    setup.audio = b.dataset.audio; saveSetup();
+    if (setup.audio === 'sdk') S.initBrowserPlayer();
+    renderHome();
+  });
   $('#to-settings').onclick = () => go('settings');
   $('#sp-login')?.addEventListener('click', () => S.login().catch(e => { toast(e.message); go('settings'); }));
   $('#continue')?.addEventListener('click', () => go(game.pending && game.pending.phase !== 'ready' ? 'turn' : 'pass'));
   $('#start').onclick = () => {
-    if (!S.isLoggedIn()) { toast('Conecta Spotify antes de empezar.'); return; }
+    if (usesSpotify() && !S.isLoggedIn()) { toast(setup.mode === 'qr' ? 'Para escanear cartas hay que conectar Spotify.' : 'Conecta Spotify o elige «Fragmentos» para jugar sin Spotify.'); return; }
     if (setup.mode === 'qr' && !Q.readDb()) toast('Recuerda: para las cartas originales hay que cargar su base de datos en Ajustes.');
     if (setup.style === 'epoca') go('eras'); else startGame();
   };
@@ -396,7 +451,7 @@ function renderSettings() {
   $('#sku')?.addEventListener('change', e => Q.setDefaultSku(e.target.value));
   $('#copy-log').onclick = () => navigator.clipboard?.writeText(S.readLog().join('\n')).then(() => toast('Registro copiado'));
   $('#clear-log').onclick = () => { S.clearLog(); renderSettings(); };
-  $('#clear-cache').onclick = () => { localStorage.removeItem('hz.tracks'); toast('Hecho'); };
+  $('#clear-cache').onclick = () => { localStorage.removeItem('hz.tracks'); P.clearCache(); toast('Hecho'); };
   $('#end-game')?.addEventListener('click', () => { game = null; localStorage.removeItem('hz.game'); toast('Partida terminada'); renderSettings(); });
 }
 
@@ -482,7 +537,7 @@ function renderTurn() {
       ? `<div class="deck"><button class="disc-btn" id="scan-btn"><span class="vinyl">${ICON.qr}</span><span class="lbl">Escanear carta</span></button>
            <p class="small">Enfoca el QR de la carta. La música empezará sola.</p></div>`
       : `<div class="deck"><button class="disc-btn" id="play-btn"><span class="vinyl">${ICON.play}</span><span class="lbl">Reproducir</span></button>
-           <p class="small">Dale al play y escucha. Nadie mira el móvil de Spotify.</p></div>`;
+           <p class="small">${setup.audio === 'spotify' ? 'Dale al play y escucha. Que nadie mire Spotify.' : 'Dale al play y escucha.'}</p></div>`;
   } else if (phase === 'listening') {
     deck = `<div class="deck playing">
       <div class="disc ${pd.playing ? 'spin' : ''}" aria-hidden="true"><i></i></div>
@@ -541,15 +596,15 @@ function renderTurn() {
       <button class="btn secondary" id="scan-cancel">Cancelar</button></div>` : ''}
   </section>`;
 
-  $('#home').onclick = () => { S.pause().catch(() => {}); go('home'); };
+  $('#home').onclick = () => { aPause(); go('home'); };
   $('#scores').onclick = showScores;
   $('#play-btn')?.addEventListener('click', playSongForTurn);
-  $('#scan-btn')?.addEventListener('click', openScanner);
+  $('#scan-btn')?.addEventListener('click', () => { unlockAudio(); openScanner(); });
   $('#toggle')?.addEventListener('click', async () => {
-    try { pd.playing ? await S.pause() : await S.resume(); pd.playing = !pd.playing; renderTurn(); }
-    catch (e) { handleSpotifyError(e, () => S.play(pd.trackId)); }
+    try { pd.playing ? await aPause() : await aResume(); pd.playing = !pd.playing; renderTurn(); }
+    catch (e) { handleSpotifyError(e, () => aRestart(pd)); }
   });
-  $('#restart')?.addEventListener('click', () => S.play(pd.trackId).then(() => { pd.playing = true; renderTurn(); }).catch(e => handleSpotifyError(e, () => S.play(pd.trackId))));
+  $('#restart')?.addEventListener('click', () => { unlockAudio(); aRestart(pd).then(() => { pd.playing = true; renderTurn(); }).catch(e => handleSpotifyError(e, () => aRestart(pd))); });
   $('#skip')?.addEventListener('click', useToken);
   $('#reveal')?.addEventListener('click', reveal);
   app.querySelectorAll('[data-check]').forEach(b => b.onclick = () => { pd[b.dataset.check] = !pd[b.dataset.check]; buzz(10); saveGame(); renderTurn(); });
@@ -559,8 +614,8 @@ function renderTurn() {
     saveGame(); renderTurn();
   });
   $('#confirm')?.addEventListener('click', confirmTurn);
-  $('#next')?.addEventListener('click', () => { S.pause().catch(() => {}); nextPlayer(); });
-  $('#to-win')?.addEventListener('click', () => { S.pause().catch(() => {}); go('win'); });
+  $('#next')?.addEventListener('click', () => { aPause(); nextPlayer(); });
+  $('#to-win')?.addEventListener('click', () => { aPause(); go('win'); });
 
   if (phase === 'listening') bindDrag();
   const m = $('#mystery');
@@ -626,11 +681,11 @@ function useToken() {
   game.skipped.push(songKey(pd.song));
   toast('Ficha usada. ¡Otra canción!');
   if (game.mode === 'qr') {
-    Object.assign(pd, { phase: 'ready', song: null, trackId: null, playing: false });
-    S.pause().catch(() => {});
+    Object.assign(pd, { phase: 'ready', song: null, trackId: null, previewUrl: null, playing: false });
+    aPause();
     saveGame(); renderTurn();
   } else {
-    pd.song = null; pd.trackId = null;
+    pd.song = null; pd.trackId = null; pd.previewUrl = null;
     saveGame(); playSongForTurn();
   }
 }
@@ -712,8 +767,9 @@ const ICON = {
 async function boot() {
   const res = await S.handleRedirect().catch(() => ({ error: 'No se pudo conectar con Spotify.' }));
   if (res?.error) toast(res.error);
+  P.hideMetadata();
   if (S.isLoggedIn()) {
-    S.initBrowserPlayer();
+    if (setup.audio === 'sdk') S.initBrowserPlayer();
     S.me().then(u => { profileName = u.display_name || u.id; save('hz.profile', profileName); if (screen === 'home') renderHome(); }).catch(() => {});
     if (res?.ok) toast('Spotify conectado');
   }

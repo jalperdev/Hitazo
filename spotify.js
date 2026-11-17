@@ -181,27 +181,55 @@ export async function getTrack(id) {
 }
 
 // ---------- Reproductor ----------
-let sdkDeviceId = null;
-const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+let sdkDeviceId = null, sdkError = null;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// En ordenador, el navegador puede ser el propio altavoz (Web Playback SDK). En móvil Spotify no lo permite.
+// Texto neutro para la notificación del móvil, para que no se vea la canción
+function hideMetadata() {
+  if (!('mediaSession' in navigator)) return;
+  try { navigator.mediaSession.metadata = new MediaMetadata({ title: 'Hitazo', artist: '¿Qué canción es?', album: '' }); } catch {}
+}
+
+// Reproductor de Spotify dentro de la propia web (Web Playback SDK): la música suena en Hitazo
 export function initBrowserPlayer() {
-  if (isMobile || !isLoggedIn() || window.__hzSdk) return;
+  if (!isLoggedIn() || window.__hzSdk) return;
   window.__hzSdk = true;
+  dbg('Cargando el reproductor de Hitazo');
   window.onSpotifyWebPlaybackSDKReady = () => {
     const player = new window.Spotify.Player({
-      name: 'Hitazo (este navegador)',
+      name: 'Hitazo',
       getOAuthToken: cb => token().then(cb).catch(() => {}),
-      volume: 0.9,
+      volume: 1,
     });
-    player.addListener('ready', ({ device_id }) => { sdkDeviceId = device_id; });
-    player.addListener('not_ready', () => { sdkDeviceId = null; });
+    player.addListener('ready', ({ device_id }) => { sdkDeviceId = device_id; sdkError = null; dbg('Reproductor de Hitazo listo'); });
+    player.addListener('not_ready', () => { sdkDeviceId = null; dbg('Reproductor de Hitazo desconectado'); });
+    for (const ev of ['initialization_error', 'authentication_error', 'account_error', 'playback_error']) {
+      player.addListener(ev, ({ message }) => { if (ev !== 'playback_error') sdkError = message; dbg(`Reproductor de Hitazo: ${ev} ${message}`); });
+    }
+    player.addListener('autoplay_failed', () => dbg('El navegador ha bloqueado el sonido automático'));
+    player.addListener('player_state_changed', () => { hideMetadata(); setTimeout(hideMetadata, 300); });
     player.connect();
     window.__hzPlayer = player;
   };
   const s = document.createElement('script');
   s.src = 'https://sdk.scdn.co/spotify-player.js';
+  s.onerror = () => { sdkError = 'no se pudo descargar'; dbg('No se pudo descargar el reproductor de Spotify'); };
   document.head.appendChild(s);
+}
+
+// Llamar dentro del toque del usuario: los móviles exigen un toque para que suene el audio
+export function unlockSdk() {
+  try { window.__hzPlayer?.activateElement?.(); } catch {}
+}
+
+async function waitSdk(ms = 9000) {
+  initBrowserPlayer();
+  const end = Date.now() + ms;
+  while (!sdkDeviceId && !sdkError && Date.now() < end) await sleep(250);
+  if (sdkDeviceId) return sdkDeviceId;
+  throw new SpotifyError('nosdk', sdkError
+    ? 'El reproductor de Spotify no funciona en este navegador (' + sdkError + ').'
+    : 'El reproductor de Spotify no ha arrancado en este navegador.');
 }
 
 export async function devices() {
@@ -210,15 +238,16 @@ export async function devices() {
 }
 export const setPreferredDevice = id => localStorage.setItem(LS.device, id);
 
+// Para el modo "app de Spotify": elige el móvil o el dispositivo activo, nunca el reproductor de Hitazo
 async function pickDevice() {
   const list = await devices();
   dbg('Dispositivos: ' + (list.map(d => `${d.name} (${d.type}${d.is_active ? ', activo' : ''})`).join(' | ') || 'ninguno'));
+  const others = list.filter(d => d.id !== sdkDeviceId && d.name !== 'Hitazo');
   const pref = localStorage.getItem(LS.device);
-  const found = list.find(d => d.id === pref)
-    || (sdkDeviceId && list.find(d => d.id === sdkDeviceId))
-    || list.find(d => d.is_active)
-    || list.find(d => d.type === 'Smartphone')
-    || list[0];
+  const found = others.find(d => d.id === pref)
+    || others.find(d => d.is_active)
+    || others.find(d => d.type === 'Smartphone')
+    || others[0];
   if (!found) throw new SpotifyError('nodevice', 'No hay ningún dispositivo de Spotify activo.');
   dbg('Uso: ' + found.name);
   return found.id;
@@ -230,7 +259,6 @@ async function nowPlaying() {
     return r?.item ? { id: r.item.id, name: r.item.name, playing: r.is_playing } : null;
   } catch { return null; }
 }
-const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // Espera hasta ~3 s a que suene la canción pedida. Devuelve true, false o 'unknown' si Spotify no informa.
 async function confirmPlaying(trackId, name) {
@@ -246,10 +274,27 @@ async function confirmPlaying(trackId, name) {
   return seen ? false : 'unknown';
 }
 
-export async function play(trackId, positionMs = 0) {
-  if (window.__hzPlayer?.activateElement) { try { await window.__hzPlayer.activateElement(); } catch {} }
-  const dev = encodeURIComponent(await pickDevice());
+// target: 'sdk' = suena dentro de Hitazo · 'spotify' = suena en la app de Spotify
+export async function play(trackId, positionMs = 0, target = 'spotify') {
   const uri = 'spotify:track:' + trackId;
+  if (target === 'sdk') {
+    const dev = encodeURIComponent(await waitSdk());
+    dbg('Pedir en Hitazo ' + trackId);
+    await api('/me/player/repeat?state=off&device_id=' + dev, { method: 'PUT' }).catch(() => {});
+    await api('/me/player/play?device_id=' + dev, { method: 'PUT', body: { uris: [uri], position_ms: positionMs } });
+    hideMetadata();
+    // Comprueba que de verdad ha arrancado (si el navegador lo bloquea, el reproductor se queda parado)
+    for (let i = 0; i < 15; i++) {
+      await sleep(400);
+      const st = await window.__hzPlayer?.getCurrentState?.();
+      if (st && !st.paused) { hideMetadata(); dbg('Suena en Hitazo'); return; }
+    }
+    throw new SpotifyError('nosdk', sdkError
+      ? 'El reproductor de Spotify no funciona en este navegador (' + sdkError + ').'
+      : 'El reproductor de Spotify no consigue sonar en este navegador.');
+  }
+
+  const dev = encodeURIComponent(await pickDevice());
   const info = await trackInfo(trackId);
   dbg(`Pedir «${info.name || trackId}»`);
   await api('/me/player/repeat?state=off&device_id=' + dev, { method: 'PUT' }).catch(() => {});
@@ -278,5 +323,10 @@ export async function play(trackId, positionMs = 0) {
   }
   throw new SpotifyError('stuck', 'Spotify no ha cambiado de canción. Abre la app de Spotify, pásala a cualquier otra canción y vuelve a darle al play.');
 }
-export const pause = () => api('/me/player/pause', { method: 'PUT' }).catch(e => { if (e.kind !== 'nodevice') throw e; });
-export const resume = () => api('/me/player/play', { method: 'PUT' });
+
+export const pause = (target = 'spotify') => target === 'sdk' && window.__hzPlayer
+  ? window.__hzPlayer.pause()
+  : api('/me/player/pause', { method: 'PUT' }).catch(e => { if (e.kind !== 'nodevice') throw e; });
+export const resume = (target = 'spotify') => target === 'sdk' && window.__hzPlayer
+  ? window.__hzPlayer.resume()
+  : api('/me/player/play', { method: 'PUT' });

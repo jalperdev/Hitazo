@@ -336,3 +336,7 @@ a { color: var(--ice); }
 }
 
 .log { background: var(--night); border-radius: 12px; padding: 10px; font-size: 12px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow-y: auto; margin: 0; color: var(--muted); }
+
+.segmented.three { grid-template-columns: repeat(3, 1fr); }
+.segmented.three button { font-size: 14.5px; padding: 11px 4px; }
+.panel h3.sub { margin: 14px 0 8px; }

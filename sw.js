@@ -1,6 +1,6 @@
 // Guarda la app en el móvil para que cargue al instante. Spotify siempre va por red.
-const CACHE = 'hitazo-v4';
-const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'data.js', 'spotify.js', 'qr.js', 'jsQR.js', 'manifest.webmanifest', 'icon-192.png'];
+const CACHE = 'hitazo-v6';
+const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'data.js', 'spotify.js', 'qr.js', 'preview.js', 'jsQR.js', 'manifest.webmanifest', 'icon-192.png'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

@@ -30,8 +30,8 @@ También sirven Netlify, Vercel o Cloudflare Pages: basta con arrastrar la carpe
 - Cada jugador empieza con una carta descubierta.
 - En su turno, el jugador pulsa **Reproducir**, dice en voz alta el artista y el título, y arrastra la carta misteriosa a su sitio en su línea del tiempo. También puede moverla con las flechas ▲▼.
 - Con **Desvelar carta** se ve si el año está bien colocado. Después se marca si ha acertado el **Artista** y/o el **Título**.
-  - Si acierta al menos uno, gana **una ficha**, aunque el año esté mal.
   - La carta se queda en su línea del tiempo solo si el año está bien colocado **y** ha acertado al menos uno de los dos.
+  - Cada carta que se queda da además **una ficha**.
   - Una ficha sirve para **Pasar**: cambia la canción que está sonando por otra.
 - Después se pasa el móvil al siguiente jugador, que es quien pulsa el play.
 - Gana el primero que llega al número de cartas elegido. El botón de la lista (arriba a la derecha) muestra las cartas de todos.
@@ -52,6 +52,14 @@ Con cartas, el año que se muestra es el que da Spotify, que a veces corresponde
 Las canciones están en `js/data.js`, una por línea con el formato `Artista|Título|Año`. Puedes añadir, quitar o corregir años sin tocar nada más: la app busca cada canción en Spotify en el momento de reproducirla y guarda el resultado.
 
 Si una canción no aparece en Spotify, la app la salta sola. Si sale una versión equivocada, corrige el título o el artista en `data.js` y pulsa **Ajustes → Olvidar canciones encontradas**.
+
+## Dónde suena la música
+En la pantalla de inicio se elige:
+- **En Hitazo:** la canción completa con tu Spotify Premium, sonando dentro de la propia app. No aparece la notificación de Spotify. Si tu móvil no lo permite, Hitazo cambia sola a «Fragmentos».
+- **Fragmentos:** un fragmento de 30 s de iTunes que se repite, sonando dentro de Hitazo. No necesita Spotify, salvo para escanear cartas.
+- **App Spotify:** suena en la app de Spotify, como al principio.
+
+En los dos primeros modos, la notificación del móvil muestra «Hitazo · ¿Qué canción es?» en lugar del título.
 
 ## Limitaciones
 - En el móvil la música suena en la app de Spotify, porque Spotify no permite reproducir dentro del navegador del móvil. Su notificación muestra el título, así que no conviene desplegarla.
